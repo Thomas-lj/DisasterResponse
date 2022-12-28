@@ -24,6 +24,19 @@ This is the folder setup for the project
 └──
 - README
 
+or, less commonly, into the `doc` folder.
+
+    .
+    ├── ...
+    ├── docs                    # Documentation files (alternatively `doc`)
+    │   ├── TOC.md              # Table of contents
+    │   ├── faq.md              # Frequently asked questions
+    │   ├── misc.md             # Miscellaneous information
+    │   ├── usage.md            # Getting started guide
+    │   └── ...                 # etc.
+    └── ...
+
+
 ## Run project
 To execute the Disaster Response
 `python run.py`
