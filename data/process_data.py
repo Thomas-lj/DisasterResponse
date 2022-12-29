@@ -1,4 +1,6 @@
 import sys
+import os
+import re
 import pandas as pd
 from sqlalchemy import create_engine
 
@@ -28,15 +30,17 @@ def clean_data(df):
 
     df_clean = df_clean.drop(columns = 'categories')
     df_concat = pd.concat([df_clean, df_cat], axis=1)
+    df_concat = df_concat.drop_duplicates()
 
-    df_unique = df_concat.drop_duplicates()
-
-    return df_unique
+    return df_concat
 
 
 def save_data(df, database_filename):
-    engine = create_engine('sqlite:///InsertDatabaseName.db')
-    df.to_sql(database_filename, engine, index=False)
+    root_path = os.getcwd()
+    db_path = 'sqlite:///' + str(root_path) + '/' + database_filename
+    engine = create_engine(db_path)
+    # df.to_sql(db_path, engine, index=False, if_exists='replace')
+    df.to_sql('disaster_table', engine, index=False, if_exists='replace')
     return
 
 
