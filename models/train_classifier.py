@@ -5,64 +5,106 @@ import pandas as pd
 import pickle
 
 from sklearn.model_selection import train_test_split, GridSearchCV
-from sklearn.pipeline import Pipeline
+from sklearn.pipeline import Pipeline, FeatureUnion
 from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import confusion_matrix
-
+from sklearn.multioutput import MultiOutputClassifier
+from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
+from sklearn.metrics import classification_report
 from sqlalchemy import create_engine
+
+import nltk
+nltk.download('stopwords')
+nltk.download('punkt')
+nltk.download('wordnet')
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 from nltk.stem.wordnet import WordNetLemmatizer
 
 
 def load_data(database_filepath):
+    """
+    loads the data saved in a db. 
+    Input:
+        database_filepath: str, ends with .db
+    ------------
+    Returns:
+        X: pd.DataFrame features
+        Y: ML labels
+        Y.columns: ML label names
+    """
     db_path = 'sqlite:///' + os.getcwd() + '/' + database_filepath
     engine = create_engine(db_path)
-    df = pd.read_sql('SELECT * FROM disaster_table', engine)
+    df = pd.read_sql_table('disaster_table', con=engine)
     df = df.drop(columns=['id', 'original', 'genre'])
     X = df['message']
     Y = df.loc[:, df.columns != 'message']
-    return X, Y, Y.columns
+    return X, Y, list(Y.columns)
 
 def tokenize(text):
+    """
+    This functions tokenizes a str text.
+    Input:
+        text, str
+    ------------
+    Returns:
+        tokens, list
+    """
+
     stop_words = stopwords.words("english")
     lemmatizer = WordNetLemmatizer()
     text = text.lower()
+    text = re.sub(r'[^A-Za-z0-9 ]+', '', text)
     url_regex = 'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'
     detected_urls = re.findall(url_regex, text)
     for url in detected_urls:
         text = text.replace(url, "urlplaceholder")
-    tokens = word_tokenize(text)
-    tokens = [lemmatizer.lemmatize(word) for word in tokens if word not in stop_words]
+    tokenized = word_tokenize(text)
+    tokens = [lemmatizer.lemmatize(word) for word in tokenized if word not in stop_words]
     return tokens
 
 
 def build_model():
+    """
+    This functions builds the data processing pipeline.
+    ------------
+    Returns:
+        pipeline, Pipeline instance.
+    """
+
     pipeline = Pipeline([
         ('vect', CountVectorizer(tokenizer=tokenize)),
         ('tfidf', TfidfTransformer()),
-        ('clf', RandomForestClassifier())
+        ('clf', MultiOutputClassifier(RandomForestClassifier()))
     ])
     parameters = {
-        'features__text_pipeline__vect__ngram_range': ((1, 1), (1, 2)),
-        'clf__n_estimators': [50, 100, 200],
-        'clf__min_samples_split': [2, 3, 4]
+        'tfidf__use_idf': [True, False],
+        'clf__estimator__n_estimators': [10, 25],
+        'clf__estimator__min_samples_split': [2, 4]
     }
-
     cv = GridSearchCV(pipeline, param_grid=parameters)
+    return cv
 
 
 def evaluate_model(model, X_test, y_test, category_names):
-    y_pred = model.predict(X_test)
-    confusion_mat = confusion_matrix(y_test, y_pred, labels=category_names)
-    accuracy = (y_pred == y_test).mean()
+    """
+    Evaluate the model with its X_test and ground truth y_test labels.
+    Input:
+        model, sklearn Pipeline instance
+        X_test, df
+        y_test, labels
+        category_names, y_test column labels
+    ------------
+    prints the classification summary of the model.
+    """
 
-    print("Labels:", category_names)
-    print("Confusion Matrix:\n", confusion_mat)
-    print("Accuracy:", accuracy)
+    y_pred = model.predict(X_test)
+    class_rep = classification_report(y_test.values, y_pred, target_names=category_names)
+    print("Classification report:\n", class_rep)
 
 def save_model(model, model_filepath):
+    """
+    Save the trained model in model_filepath (str).
+    """
     pickle.dump(model, open(model_filepath, 'wb'))
 
 
@@ -72,10 +114,8 @@ def main():
         print('Loading data...\n    DATABASE: {}'.format(database_filepath))
         X, Y, category_names = load_data(database_filepath)
         X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2)
-        tokenize(X.iloc[0].message)
         print('Building model...')
         model = build_model()
-        
         print('Training model...')
         model.fit(X_train, Y_train)
         

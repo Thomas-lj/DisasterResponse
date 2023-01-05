@@ -5,6 +5,15 @@ import pandas as pd
 from sqlalchemy import create_engine
 
 def load_data(messages_filepath, categories_filepath):
+    """
+    This function reads two dataframes, merges them and return the merged dataframe.
+    Input: messages_filepath: str
+           categories_filepath: str
+    -----------
+    Output: df_merge: pd.DataFrame
+
+    """
+
     messages = pd.read_csv(messages_filepath)
     categories = pd.read_csv(categories_filepath)
     df_merge = pd.merge(
@@ -16,10 +25,19 @@ def load_data(messages_filepath, categories_filepath):
     return df_merge
 
 def clean_data(df):
+    """
+    This function takes an input dataframe and cleans it.
+    Input: df: pd.DataFrame
+    -----------
+    Output: df_concat: pd.DataFrame
+
+    """
+
     df_clean = df.copy()
 
     # split by the 36 different categories.
     df_cat = df_clean.categories.str.split(';', expand=True)
+
     cat_row_cols = df_cat.iloc[0].apply(lambda x: x[:-2])
     df_cat.rename(
         columns = cat_row_cols,
@@ -27,15 +45,31 @@ def clean_data(df):
     )
     for col in df_cat.columns:
         df_cat[col] = df_cat[col].astype(str).replace('.*-', '', regex=True)
+        df_cat[col] = df_cat[col].astype(int)
 
+    # remove the child_alone columns as all values equal 0.
+    df_cat = df_cat.drop(columns = 'child_alone')
+    # remove categories (now one-hot encoded).
     df_clean = df_clean.drop(columns = 'categories')
     df_concat = pd.concat([df_clean, df_cat], axis=1)
-    df_concat = df_concat.drop_duplicates()
+    
+    # convert all the values=2 in the related column to 1. Suppose this is an error.
+    df_concat.related.replace(2, 1, inplace=True)
 
+    # remove duplicates
+
+    df_concat.drop_duplicates(inplace=True)
     return df_concat
 
 
 def save_data(df, database_filename):
+    """
+    Save the merged dataframe to the database.
+    Input: df: pd.DataFrame
+           database_filename: str
+    -----------
+    Output: None
+    """
     root_path = os.getcwd()
     db_path = 'sqlite:///' + str(root_path) + '/' + database_filename
     engine = create_engine(db_path)
@@ -55,7 +89,6 @@ def main():
 
         print('Cleaning data...')
         df = clean_data(df)
-        
         print('Saving data...\n    DATABASE: {}'.format(database_filepath))
         save_data(df, database_filepath)
         
