@@ -77,9 +77,9 @@ def build_model():
         ('clf', MultiOutputClassifier(RandomForestClassifier()))
     ])
     parameters = {
-        'tfidf__use_idf': [True, False],
-        'clf__estimator__n_estimators': [10, 25],
-        'clf__estimator__min_samples_split': [2, 4]
+        # 'tfidf__use_idf': [True],
+        # 'clf__estimator__n_estimators': [10],
+        'clf__estimator__min_samples_split': [2]
     }
     cv = GridSearchCV(pipeline, param_grid=parameters)
     return cv
@@ -103,7 +103,8 @@ def evaluate_model(model, X_test, y_test, category_names):
 
 def save_model(model, model_filepath):
     """
-    Save the trained model in model_filepath (str).
+    Save the trained model.
+    input: model_filepath (str)
     """
     pickle.dump(model, open(model_filepath, 'wb'))
 
