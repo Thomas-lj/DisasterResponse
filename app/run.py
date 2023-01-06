@@ -25,9 +25,11 @@ def tokenize(text):
 
     return clean_tokens
 
+
 # load data
 engine = create_engine('sqlite:///../data/disasterdatab.db')
 df = pd.read_sql_table('disaster_table', engine)
+
 
 # load model
 model = joblib.load("../models/model_weights.pkl")
@@ -42,6 +44,11 @@ def index():
     genre_counts = df.groupby('genre').count()['message']
     genre_names = list(genre_counts.index)
     
+    cat_cols = df.iloc[:,4:].keys()
+    cat_sums = df[cat_cols].sum()
+    
+    genre_counts = df.groupby('genre').count()['message']
+
     # create visuals
     graphs = [
         {
@@ -61,7 +68,26 @@ def index():
                     'title': "Genre"
                 }
             }
+        },
+        {
+            'data': [
+                Bar(
+                    x=cat_cols,
+                    y=cat_sums
+                )
+            ],
+
+            'layout': {
+                'title': 'Distribution of Message categories',
+                'yaxis': {
+                    'title': "Count"
+                },
+                'xaxis': {
+                    'title': "Category"
+                }
+            }
         }
+
     ]
     
     # encode plotly graphs in JSON
