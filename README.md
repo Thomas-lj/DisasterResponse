@@ -62,3 +62,7 @@ python run.py
 Run locally that opens a localhost http://172.24.34.237:3001/ where you can view the dataset distribution and classify a new message of your own definition
 
 ![disaster_start_page](https://user-images.githubusercontent.com/43189719/211047472-b4410ab3-517f-4dc0-a7df-76e4bbeefcfa.png)
+
+My resulting classification repor has the following metrics:
+![classification_report](https://user-images.githubusercontent.com/43189719/211071163-18ecbdc8-acd5-4095-80bd-ad2e1897231b.png)
+
